@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Rekod Kehadiran - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-calendar-check"></i> Rekod Kehadiran</h2>
+        <div>
+            <a href="{{ url_for('export_excel', date_from=date_filter, date_to=date_filter, search=search, status=status_filter) }}" 
+               class="btn btn-success">
+                <i class="bi bi-download"></i> Export Semua
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin_attendance') }}" class="row g-3">
+                <div class="col-12 col-md-4">
+                    <label for="search" class="form-label">Cari Nama</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               placeholder="Cari nama pelajar..." value="{{ search }}">
+                    </div>
+                </div>
+                
+                <div class="col-12 col-md-3">
+                    <label for="date" class="form-label">Tarikh</label>
+                    <input type="date" class="form-control" id="date" name="date" value="{{ date_filter }}">
+                </div>
+                
+                <div class="col-12 col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Semua Status</option>
+                        <option value="present" {% if status_filter == 'present' %}selected{% endif %}>Hadir</option>
+                        <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Lewat</option>
+                    </select>
+                </div>
+                
+                <div class="col-12 col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    {% if search or date_filter or status_filter %}
+                    <a href="{{ url_for('admin_attendance') }}" class="btn btn-outline-secondary w-100 mt-2">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Attendance Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> 
+                Senarai Kehadiran
+                {% if attendances.total %}
+                <span class="badge bg-primary ms-2">{{ attendances.total }} rekod</span>
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama</th>
+                            <th>Email</th>
+                            <th>Tarikh</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Status</th>
+                            <th>Lokasi</th>
+                            <th>Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attendance, user in attendances.items %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-person-circle"></i> 
+                                {{ user.full_name }}
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ attendance.check_in.strftime('%d-%m-%Y') }}</td>
+                            <td>{{ attendance.check_in.strftime('%H:%M:%S') }}</td>
+                            <td>
+                                {% if attendance.check_out %}
+                                    {{ attendance.check_out.strftime('%H:%M:%S') }}
+                                {% else %}
+                                    <span class="badge bg-warning">Belum Check Out</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attendance.status == 'present' %}
+                                    <span class="badge bg-success">Hadir</span>
+                                {% elif attendance.status == 'late' %}
+                                    <span class="badge bg-warning">Lewat</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Tidak Hadir</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ attendance.location or 'N/A' }}</td>
+                           <td>
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-download"></i> Export
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" 
+                   href="{{ url_for('export_student_excel', user_id=user.id) }}">
+                    <i class="bi bi-file-excel"></i> Export Excel
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                                <p class="mt-3">Tiada rekod kehadiran ditemui.</p>
+                                {% if search or date_filter or status_filter %}
+                                <a href="{{ url_for('admin_attendance') }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-x-circle"></i> Clear Filter
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if attendances.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-3">
+                    {% if attendances.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_attendance', page=attendances.prev_num, search=search, date=date_filter, status=status_filter) }}">
+                            <i class="bi bi-chevron-left"></i> Sebelum
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in attendances.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                        <li class="page-item {% if page_num == attendances.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin_attendance', page=page_num, search=search, date=date_filter, status=status_filter) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if attendances.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_attendance', page=attendances.next_num, search=search, date=date_filter, status=status_filter) }}">
+                            Seterusnya <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
